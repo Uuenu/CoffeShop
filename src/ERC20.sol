@@ -2,8 +2,9 @@
 pragma solidity ^0.8.18;
 
 import "./IERC20.sol";
+import "./ReEntrancyGuard.sol";
 
-contract ERC20 is IERC20 {
+contract ERC20 is IERC20,  ReEntrancyGuard {
     address contractOwner;
     mapping (address => uint) balances;
     mapping (address => mapping(address => uint)) allowances;
@@ -63,42 +64,122 @@ contract ERC20 is IERC20 {
         emit Transfer(from, address(0), amount);
     }
 
-    function transfer(address to, uint amount) external {
+    function transfer(address to, uint amount) external noReentrant() returns(bool){
         beforeTokenTransfer(address(0), to, amount);
         balances[msg.sender] -= amount;
         balances[to] += amount;
         emit Transfer(msg.sender, to, amount);
+        return true;
     }
 
     function allowance(address owner, address spender) external view returns(uint) {
         return allowances[owner][spender];
     }
 
-    function approve(address spender, uint amount) external {
+    function approve(address spender, uint amount) external returns(bool success) {
         _approve(msg.sender, spender, amount);
+        return true;
     }
 
     function _approve(address sender, address spender, uint amount) internal {
         allowances[sender][spender] = amount;
-        emit Approve(sender, spender, amount);
+        emit Approval(sender, spender, amount);
     }
 
-    function transferFrom(address sender, address recipient, uint amount) external {
-        beforeTokenTransfer(sender, recipient, amount);
+    function transferFrom(address sender, address recipient, uint amount) external noReentrant() returns(bool) {
 
+        require( allowances[sender][recipient] >= amount, "not enoug tokens ");
         allowances[sender][recipient] -= amount;
         balances[sender] -= amount;
         balances[recipient] += amount;
         emit Transfer(sender, recipient, amount);
+        return true;
     }
 
     function beforeTokenTransfer(address _from, address _to, uint amount) internal virtual {}
 
 }
 
-contract CoffeToken is ERC20 {
-    constructor(address shop) ERC20("Coffe Toke", "CFXT", 30, shop) {
 
+// 8 lesson hw
+
+// true
+contract CoffeToken is ERC20 {
+    constructor(address shop) ERC20("Coffe Token", "CFXT", 30, shop) {}
+}
+
+// false
+contract FilterToken is ERC20 {
+    constructor(address shop) ERC20("Filter Token", "FLTKN", 50, shop) {}
+}
+
+contract BabySwap is ReEntrancyGuard() {
+    IERC20 public coffeToken;
+    IERC20 public filterToken;
+    address payable public owner;
+
+
+    constructor() {
+        coffeToken = new CoffeToken(address(this));
+        filterToken = new FilterToken(address(this));
+        owner = payable(msg.sender);
+    }
+
+    modifier onlyOnwer() {
+        require(msg.sender == owner, "you are not an owner");
+        _;
+    }
+
+    receive() external payable {}
+
+    function exchange(bool  tokenSell, uint amount) external payable noReentrant() {
+        IERC20  sellToken;
+        IERC20  buyToken;
+        if (tokenSell == true) {
+            sellToken = coffeToken;
+            buyToken = filterToken;
+        }else {
+            sellToken = filterToken;
+            buyToken = coffeToken;
+        }
+
+        require(
+            amount > 0 && 
+            amount <= sellToken.balanceOf(msg.sender), 
+            "not enough tokens to sell on youre ballance!");
+
+        uint allowance = sellToken.allowance(msg.sender, address(this));
+        require(allowance >= amount, "not enough tokens to sell on in allowance!");
+        
+        bool success = sellToken.transferFrom(msg.sender, address(this), amount);
+        if (!success) {
+            revert(" sellToken.transferFrom didnt success");
+        }
+
+        success = buyToken.transfer(address(this), amount);
+         if (!success) {
+            revert("buyToken.transfer didnt success");
+        }
+    }
+
+    function buyToken(uint amountEth, bool tokenKind) external payable {
+        if (tokenKind) {
+            uint tokenAmount;
+            tokenAmount = amountEth * 10 ** coffeToken.decimals();
+            bool success = coffeToken.transferFrom(address(this), msg.sender, tokenAmount);
+            if (!success) {
+                revert(" sellToken.transferFrom didnt success");
+            }
+            //payable(address(this)).transfer(amountEth); 
+        }else {
+            uint tokenAmount;
+            tokenAmount = amountEth * 10 ** coffeToken.decimals();
+            bool success =filterToken.transferFrom(address(this), msg.sender, tokenAmount);
+            if (!success) {
+                revert(" sellToken.transferFrom didnt success");
+            }  
+            //payable(address(this)).transfer(amountEth); 
+        }
     }
 }
 
@@ -126,7 +207,7 @@ contract CoffeShop {
 
         token.transfer(msg.sender, tokensToBuy);
         emit Bought(msg.sender, tokensToBuy);
-        emit Deal(owner, msg.sender, tokensToBuy);
+        emit Deal(address(this), msg.sender, tokensToBuy);
     }
 
     function sell() external payable {
@@ -142,7 +223,7 @@ contract CoffeShop {
         payable(msg.sender).transfer(tokensToSell);
 
         emit Sold(msg.sender, tokensToSell);
-        emit Deal(msg.sender, owner, tokensToSell);
+        emit Deal(msg.sender, address(this), tokensToSell);
     }
 
     function tokenBalance() public view returns(uint) {
