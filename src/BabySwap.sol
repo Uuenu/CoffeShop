@@ -57,23 +57,22 @@ contract BabySwap is ReEntrancyGuard() {
         }
     }
 
-    function buyToken(uint amountEth, bool tokenKind) external payable {
+    function buyToken(bool tokenKind) external payable {
+        uint amountWei = msg.value;
         if (tokenKind) {
             uint tokenAmount;
-            tokenAmount = amountEth * 10 ** coffeToken.decimals();
+            tokenAmount = amountWei;
             bool success = coffeToken.transferFrom(address(this), msg.sender, tokenAmount);
             if (!success) {
                 revert(" sellToken.transferFrom didnt success");
             }
-            //payable(address(this)).transfer(amountEth); 
         }else {
             uint tokenAmount;
-            tokenAmount = amountEth * 10 ** coffeToken.decimals();
+            tokenAmount = amountWei;
             bool success =filterToken.transferFrom(address(this), msg.sender, tokenAmount);
             if (!success) {
                 revert(" sellToken.transferFrom didnt success");
             }  
-            //payable(address(this)).transfer(amountEth); 
         }
     }
 }
