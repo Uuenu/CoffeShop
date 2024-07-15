@@ -20,6 +20,8 @@ interface IERC20 {
 
     function transferFrom(address sender, address recipient, uint amount) external returns(bool);
 
+    function getTokenAddress() external view returns (address);
+
     event Transfer(address indexed from, address indexed to, uint amount);
 
     event Approval(address indexed owner, address indexed to, uint amount);
