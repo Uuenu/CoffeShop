@@ -27,46 +27,48 @@ contract BabySwap is ReEntrancyGuard() {
 
     receive() external payable {}
 
-    function exchange(bool  tokenSell, uint amount) external payable noReentrant() {
+    function exchange(address token, uint amount) external payable noReentrant() {
         IERC20  sellToken;
         IERC20  buyToken;
-        if (tokenSell == true) {
+
+
+       if (token == coffeToken.getTokenAddress()) {
             sellToken = coffeToken;
             buyToken = filterToken;
-        }else {
+       }else if (token == filterToken.getTokenAddress()){
             sellToken = filterToken;
             buyToken = coffeToken;
-        }
+       }
 
-        require(
+       require(
             amount > 0 && 
             amount <= sellToken.balanceOf(msg.sender), 
             "not enough tokens to sell on youre ballance!");
 
-        uint allowance = sellToken.allowance(msg.sender, address(this));
-        require(allowance >= amount, "not enough tokens to sell on in allowance!");
-        
-        bool success = sellToken.transferFrom(msg.sender, address(this), amount);
-        if (!success) {
-            revert(" sellToken.transferFrom didnt success");
-        }
+            uint allowance = sellToken.allowance(msg.sender, address(this));
+            require(allowance >= amount, "not enough tokens to sell on in allowance!");
+            
+            bool success = sellToken.transferFrom(msg.sender, address(this), amount);
+            if (!success) {
+                revert(" sellToken.transferFrom didnt success");
+            }
 
-        success = buyToken.transfer(address(this), amount);
-         if (!success) {
-            revert("buyToken.transfer didnt success");
-        }
+            success = buyToken.transfer(address(this), amount);
+            if (!success) {
+                revert("buyToken.transfer didnt success");
+            }
     }
 
-    function buyToken(bool tokenKind) external payable {
+    function buyToken(address token) external payable {
         uint amountWei = msg.value;
-        if (tokenKind) {
+        if (token == coffeToken.getTokenAddress()) {
             uint tokenAmount;
             tokenAmount = amountWei;
             bool success = coffeToken.transferFrom(address(this), msg.sender, tokenAmount);
             if (!success) {
                 revert(" sellToken.transferFrom didnt success");
             }
-        }else {
+        }else if (token == filterToken.getTokenAddress()) {
             uint tokenAmount;
             tokenAmount = amountWei;
             bool success =filterToken.transferFrom(address(this), msg.sender, tokenAmount);

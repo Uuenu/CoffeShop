@@ -96,16 +96,19 @@ contract ERC20 is IERC20,  ReEntrancyGuard {
         return true;
     }
 
+    function getTokenAddress() public view returns (address) {
+        return address(this);
+    }
+
     function beforeTokenTransfer(address _from, address _to, uint amount) internal virtual {}
 
 }
 
-// true
 contract CoffeToken is ERC20 {
     constructor(address shop) ERC20("Coffe Token", "CFXT", 30, shop) {}
+
 }
 
-// false
 contract FilterToken is ERC20 {
     constructor(address shop) ERC20("Filter Token", "FLTKN", 50, shop) {}
 }
@@ -137,20 +140,19 @@ contract CoffeShop {
         emit Deal(address(this), msg.sender, tokensToBuy);
     }
 
-    function sell() external payable {
-        uint tokensToSell = msg.value;
+    function sell(uint amount) external payable {
         require(
-            tokensToSell > 0 && 
-            tokensToSell <= token.balanceOf(msg.sender), "not enough tokens on youre ballance!");
+            amount > 0 && 
+            amount <= token.balanceOf(msg.sender), "not enough tokens on youre ballance!");
         
         uint allowance = token.allowance(msg.sender, address(this));
-        require(allowance >= tokensToSell, "not enough tokens in allowance!");
+        require(allowance >= amount, "not enough tokens in allowance!");
 
-        token.transferFrom(msg.sender, address(this), tokensToSell);
-        payable(msg.sender).transfer(tokensToSell);
+        token.transferFrom(msg.sender, address(this), amount);
+        payable(msg.sender).transfer(amount);
 
-        emit Sold(msg.sender, tokensToSell);
-        emit Deal(msg.sender, address(this), tokensToSell);
+        emit Sold(msg.sender, amount);
+        emit Deal(msg.sender, address(this), amount);
     }
 
     function tokenBalance() public view returns(uint) {
