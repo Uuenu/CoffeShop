@@ -3,7 +3,7 @@ pragma solidity ^0.8.18;
 
 import "./IERC20.sol";
 import "./ReEntrancyGuard.sol";
-
+import "utils/SafeERC20.sol";
 contract ERC20 is IERC20,  ReEntrancyGuard {
     address contractOwner;
     mapping (address => uint) balances;
@@ -114,6 +114,7 @@ contract FilterToken is ERC20 {
 }
 
 contract CoffeShop {
+    using SafeERC20 for IERC20;
     IERC20 public token;
     address payable public owner;
     event Deal(address seller, address buyer, uint amount);
@@ -135,7 +136,7 @@ contract CoffeShop {
         require(tokensToBuy > 0, "not enough funds!");
         require(tokenBalance() >= tokensToBuy, "not enough tokens!");
 
-        token.transfer(msg.sender, tokensToBuy);
+        token.safeTransfer(msg.sender, tokensToBuy);
         emit Bought(msg.sender, tokensToBuy);
         emit Deal(address(this), msg.sender, tokensToBuy);
     }
@@ -148,7 +149,7 @@ contract CoffeShop {
         uint allowance = token.allowance(msg.sender, address(this));
         require(allowance >= amount, "not enough tokens in allowance!");
 
-        token.transferFrom(msg.sender, address(this), amount);
+        token.safeTransferFrom(msg.sender, address(this), amount);
         payable(msg.sender).transfer(amount);
 
         emit Sold(msg.sender, amount);
@@ -161,6 +162,6 @@ contract CoffeShop {
 
     function withdraw(uint amount) public payable onlyOnwer() {
         require(token.balanceOf(address(this)) >= amount, "not enough tokens on token balance");
-        token.transferFrom(address(this), owner, amount);
+        token.safeTransferFrom(address(this), owner, amount);
     }
 }

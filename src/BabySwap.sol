@@ -5,10 +5,9 @@ import "./IERC20.sol";
 import "./ReEntrancyGuard.sol";
 import "./ERC20.sol";
 
-
 // 8 lesson hw
-
 contract BabySwap is ReEntrancyGuard() {
+    using SafeERC20 for IERC20;
     IERC20 public coffeToken;
     IERC20 public filterToken;
     address payable public owner;
@@ -48,33 +47,24 @@ contract BabySwap is ReEntrancyGuard() {
             uint allowance = sellToken.allowance(msg.sender, address(this));
             require(allowance >= amount, "not enough tokens to sell on in allowance!");
             
-            bool success = sellToken.transferFrom(msg.sender, address(this), amount);
-            if (!success) {
-                revert(" sellToken.transferFrom didnt success");
-            }
-
-            success = buyToken.transfer(address(this), amount);
-            if (!success) {
-                revert("buyToken.transfer didnt success");
-            }
+           sellToken.safeTransferFrom(msg.sender, address(this), amount);
+           
+           buyToken.safeTransfer(address(this), amount);
     }
+
 
     function buyToken(address token) external payable {
         uint amountWei = msg.value;
         if (token == coffeToken.getTokenAddress()) {
             uint tokenAmount;
             tokenAmount = amountWei;
-            bool success = coffeToken.transferFrom(address(this), msg.sender, tokenAmount);
-            if (!success) {
-                revert(" sellToken.transferFrom didnt success");
-            }
+            coffeToken.safeTransferFrom(address(this), msg.sender, tokenAmount);
+            
         }else if (token == filterToken.getTokenAddress()) {
             uint tokenAmount;
             tokenAmount = amountWei;
-            bool success =filterToken.transferFrom(address(this), msg.sender, tokenAmount);
-            if (!success) {
-                revert(" sellToken.transferFrom didnt success");
-            }  
+            filterToken.safeTransferFrom(address(this), msg.sender, tokenAmount);
+           
         }
     }
 }
